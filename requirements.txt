@@ -1,0 +1,10 @@
+ctgan==0.9.1
+matplotlib==3.8.3
+seaborn==0.13.2
+pandas==2.0.3
+uvicorn==0.27.0.post1
+fastapi==0.109.2
+python-multipart==0.0.9
+reportlab==4.1.0
+python-dotenv==1.0.0
+sdv
