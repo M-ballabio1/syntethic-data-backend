@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import torch
 
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import OneHotEncoder
@@ -83,7 +84,9 @@ def inference_and_report(unique_id, num_rows):
     if not model_found:
         raise HTTPException(status_code=404, detail="Model not found")
     
-    # Carica il modello
+    # Carica il modello sulla CPU
+    model = torch.load(model_path, map_location=torch.device('cpu'))
+    
     synthesizer = TVAESynthesizer.load(filepath=model_path)
     
     # Genera dati sintetici
