@@ -8,7 +8,7 @@ The Synthetic Data Generation API Project provides an API for generating synthet
 
 To start the Synthetic Data Generation API Project, follow these steps:
 
-1. **Clone the Repository**: Clone the project repository from GitHub using the following command: git clone https://github.com/your-username/synthetic-data-api.git
+1. **Clone the Repository**: Clone the project repository from GitHub using the following command: [git clone https://github.com/your-username/synthetic-data-api.git](https://github.com/M-ballabio1/syntethic-data-backend.git)
 2. **Install Dependencies**: Navigate to the project directory and install the required dependencies using pip: cd synthetic-data-api | pip install -r requirements.txt
 3. **Set Environment Variables**: Set the required environment variables, including the API key (`API_KEY`), if necessary.
 4. **Run the Application**: Start the FastAPI application by running the following command: uvicorn main:app --reload
