@@ -42,9 +42,18 @@ def train_ctgan(data: pd.DataFrame, discrete_columns: list, epochs: int, unique_
 # Caricamento del modello pickle
 def load_model(model_id):
     try:
-        model_path = os.path.join("models", f"{model_id}.pkl")
-        with open(model_path, "rb") as f:
-            model = pickle.load(f)
+        # Controlla se il modello con l'ID univoco fornito esiste nella cartella models
+        models_folder = "models"
+        model_found = False
+        model_path = None
+        for model_file in os.listdir(models_folder):
+            if model_file.startswith(f"ctgan_model_{model_id}"):
+                model_found = True
+                model_path = os.path.join(models_folder, model_file)
+                with open(model_path, "rb") as f:
+                    model = pickle.load(f)
+                break
+        
         return model
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Model with ID {model_id} not found")
@@ -69,7 +78,7 @@ def train_tvae(epochs: int, data, metadata, unique_id):
     return loss_values
 
 # Funzione per caricare il modello e generare dati sintetici
-def inference_and_report(unique_id, num_rows):
+def inference_and_report(unique_id, num_rows, metadata):
 # Controlla se il modello con l'ID univoco fornito esiste nella cartella models
     models_folder = "models"
     model_found = False
@@ -84,8 +93,10 @@ def inference_and_report(unique_id, num_rows):
     if not model_found:
         raise HTTPException(status_code=404, detail="Model not found")
     
-    # Carica il modello sulla CPU
-    model = torch.load(model_path, map_location=torch.device('cpu'))
+    # remove gpu
+    synthesizer = TVAESynthesizer(metadata, cuda=False)
+
+    print(synthesizer.get_parameters())
     
     synthesizer = TVAESynthesizer.load(filepath=model_path)
     

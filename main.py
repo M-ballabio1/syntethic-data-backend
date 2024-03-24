@@ -109,11 +109,11 @@ async def generate_synthetic_data(background_tasks: BackgroundTasks, epochs: Ann
 
 # API endpoint per l'inferenza
 @app.post("/inference_ctgan_metrics")
-def inference(model_id: Annotated[str, Form()], sample_num: Annotated[int, Form()], real_data: UploadFile, api_key: Annotated[str, Form()]):
+def inference(model_id: str, sample_num: int, api_key: str):
     # Verifica se la chiave API fornita corrisponde alla chiave API memorizzata
     if api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    
+
     # Carica il modello richiesto
     model = load_model(model_id)
     
@@ -171,7 +171,7 @@ async def inference_and_report_api(unique_id: str, num_rows: int, api_key: str):
     real_data, metadata = download_demo(modality='single_table', dataset_name='adult')
 
     # Esegui l'inferenza e genera il report
-    synthetic_data = inference_and_report(unique_id, num_rows)
+    synthetic_data = inference_and_report(unique_id, num_rows, metadata)
     
     # Restituisci il report e i dati sintetici
     return Response(synthetic_data.to_csv(index=False), media_type="text/csv")
