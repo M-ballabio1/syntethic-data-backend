@@ -8,3 +8,4 @@ python-multipart==0.0.9
 reportlab==4.1.0
 python-dotenv==1.0.0
 sdv==1.11.0
+SQLAlchemy==2.0.29

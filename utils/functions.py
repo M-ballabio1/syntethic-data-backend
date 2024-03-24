@@ -7,6 +7,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
+import io
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(device)
 
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import OneHotEncoder
@@ -15,6 +19,11 @@ from ctgan import CTGAN
 from sdv.single_table import TVAESynthesizer
 from sdv.evaluation.single_table import run_diagnostic, evaluate_quality, get_column_plot
 
+def is_csv(file_name):
+    return file_name.lower().endswith('.csv')
+
+def is_excel(file_name):
+    return file_name.lower().endswith('.xlsx') or file_name.lower().endswith('.xls')
 
 # Background task for training the model
 def train_ctgan(data: pd.DataFrame, discrete_columns: list, epochs: int, unique_id: str, file_path: str, len_df: str):
@@ -29,6 +38,9 @@ def train_ctgan(data: pd.DataFrame, discrete_columns: list, epochs: int, unique_
         models_folder = "models"
         os.makedirs(models_folder, exist_ok=True)
         print("sto per salvare modello")
+
+        # save sia per come .pt che .pkl file
+        torch.save(ctgan, os.path.join(models_folder, f'ctgan_model_{unique_id}_{str(epochs)}_{str(len_df)}.pt'))
         with open(os.path.join(models_folder, f'ctgan_model_{unique_id}_{str(epochs)}_{str(len_df)}.pkl'), 'wb') as f:
             pickle.dump(ctgan, f)
 
@@ -47,16 +59,28 @@ def load_model(model_id):
         model_found = False
         model_path = None
         for model_file in os.listdir(models_folder):
-            if model_file.startswith(f"ctgan_model_{model_id}"):
+            if model_file.startswith(f"ctgan_model_{model_id}") and model_file.endswith(f".pt"):
                 model_found = True
                 model_path = os.path.join(models_folder, model_file)
-                with open(model_path, "rb") as f:
-                    model = pickle.load(f)
+
+                # Caricamento del modello assegnandolo alla CPU
+                model = torch.load(model_path, map_location=torch.device('cpu'))
+                model_used = "ctgan"
+                break
+            elif model_file.startswith(f"tvae_model_{model_id}") and model_file.endswith(f".pt"):
+                model_found = True
+                model_path = os.path.join(models_folder, model_file)
+
+                # Caricamento del modello assegnandolo alla CPU
+                model = torch.load(model_path, map_location=torch.device('cpu'))
+                model_used = "tvae"
                 break
         
-        return model
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Model with ID {model_id} not found")
+        if not model_found:
+            raise FileNotFoundError(f"Model with ID {model_id} not found")
+        
+        return model, model_used
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading model: {e}")
 
@@ -73,6 +97,9 @@ def train_tvae(epochs: int, data, metadata, unique_id):
     # Salva il modello
     models_folder = "models"
     os.makedirs(models_folder, exist_ok=True)
+
+    # save sia per come .pt che .pkl file
+    torch.save(synthesizer, os.path.join(models_folder, f'tvae_model_{unique_id}_{str(epochs)}_{str(len_df)}.pt'))
     synthesizer.save(filepath=os.path.join(models_folder, f'tvae_model_{unique_id}_{str(epochs)}_{str(len_df)}.pkl'))
     print("finish training tvae")
     return loss_values
@@ -84,7 +111,7 @@ def inference_and_report(unique_id, num_rows, metadata):
     model_found = False
     model_path = None
     for model_file in os.listdir(models_folder):
-        if model_file.startswith(f"tvae_model_{unique_id}"):
+        if model_file.startswith(f"tvae_model_{unique_id}" or model_file.startswith(f"ctgan_model_{unique_id}")):
             model_found = True
             model_path = os.path.join(models_folder, model_file)
             break
@@ -94,10 +121,8 @@ def inference_and_report(unique_id, num_rows, metadata):
         raise HTTPException(status_code=404, detail="Model not found")
     
     # remove gpu
-    synthesizer = TVAESynthesizer(metadata, cuda=False)
-
+    synthesizer = TVAESynthesizer(metadata)
     print(synthesizer.get_parameters())
-    
     synthesizer = TVAESynthesizer.load(filepath=model_path)
     
     # Genera dati sintetici
