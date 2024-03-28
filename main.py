@@ -57,7 +57,8 @@ app.add_middleware(
 )"""
 
 # Inizializza il database all'avvio dell'applicazione
-init_db()
+if os.path.exists("database/test.db"):
+    init_db()
 
 # Recupera la chiave API dalle variabili d'ambiente
 try:
