@@ -18,7 +18,7 @@ import seaborn as sns
 from sdv.datasets.demo import download_demo
 from sdv.metadata import SingleTableMetadata
 
-from utils.functions import train_ctgan, load_model, train_tvae, inference_and_report, is_csv, is_excel
+from utils.functions import train_ctgan, load_model, train_tvae, inference_and_report, is_csv, is_excel, upload_file_to_bucket, list_bucket_files_with_extensions
 from database.crud import create_transaction, get_transactions
 from database.database import init_db
 
@@ -98,9 +98,14 @@ async def get_models():
     Returns:
         JSONResponse: Un elenco JSON dei modelli disponibili.
     """
-    models_dir = "models"
-    models_list = os.listdir(models_dir)
-    return JSONResponse(content={"models": models_list})
+    bucket_name = 'syntethic-db_obj'
+    extensions = ('.pkl', '.pt')
+
+    models_list = list_bucket_files_with_extensions(bucket_name, extensions)
+    if models_list is not None:
+        return JSONResponse(content={"models": models_list})
+    else:
+        return JSONResponse(content={"error": "Failed to fetch models list"}, status_code=500)
 
 @app.post("/training_model_ctgan", tags=["Training ctgan"])
 async def generate_synthetic_data(background_tasks: BackgroundTasks, epochs: Annotated[str, Form()], file_training_data: UploadFile, api_key: Annotated[str, Form()]):

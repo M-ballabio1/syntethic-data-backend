@@ -9,3 +9,5 @@ reportlab==4.1.0
 python-dotenv==1.0.0
 sdv==1.11.0
 SQLAlchemy==2.0.29
+google-cloud-storage==2.9.0
+supabase
