@@ -1,28 +1,29 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime
+import os
+from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
+import os
+from datetime import datetime
+from supabase import Client, create_client
 
-# Definisci il motore SQLAlchemy
-DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(DATABASE_URL, echo=True)  # Imposta echo=True per visualizzare le query eseguite
+# Initialize Supabase client
+supabase_url = os.environ.get("SUPABASE_URL")
+supabase_key = os.environ.get("SUPABASE_KEY")
 
-# Crea una sessione per interagire con il database
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+supabase = Client( 
+	supabase_url = supabase_url,
+    supabase_key = supabase_key
+)
 
-# Definisci la classe base per i modelli
-Base = declarative_base()
+# Function to write transaction data to the database
+def write_transaction(model_id: str, method: str, url: str, status_code: int):
+    timestamp = datetime.utcnow().isoformat()
+    data = {'model_id': model_id, 'method': method, 'url': url, 'timestamp': timestamp, 'status_code': status_code}
+    response = supabase.table('transactions').upsert(data, returning='minimal').execute()
+    return response.data
 
-class Transaction(Base):
-    __tablename__ = 'transactions'
-
-    id = Column(Integer, primary_key=True, index=True)
-    model_id = Column(String)
-    method = Column(String)
-    url = Column(String)
-    timestamp = Column(DateTime, default=datetime.utcnow)
-    status_code = Column(Integer)  # Codice di stato HTTP della risposta
-
-# Funzione per inizializzare il database e creare le tabelle
-def init_db():
-    Base.metadata.create_all(bind=engine)
+# Function to retrieve all transaction data from the database
+def get_transactions():
+    response = supabase.table('transactions').select('*').execute()
+    return response.data

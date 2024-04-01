@@ -18,9 +18,10 @@ import seaborn as sns
 from sdv.datasets.demo import download_demo
 from sdv.metadata import SingleTableMetadata
 
+from supabase import Client, create_client
+
 from utils.functions import train_ctgan, load_model, train_tvae, inference_and_report, is_csv, is_excel, upload_file_to_bucket, list_bucket_files_with_extensions
-from database.crud import create_transaction, get_transactions
-from database.database import init_db
+from database.database import write_transaction, get_transactions
 
 app = FastAPI(
     title="Synthetic Data Generation API Project",
@@ -55,10 +56,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )"""
-
-# Inizializza il database all'avvio dell'applicazione
-if os.path.exists("database/test.db"):
-    init_db()
 
 # Recupera la chiave API dalle variabili d'ambiente
 try:
@@ -162,7 +159,7 @@ async def generate_synthetic_data(background_tasks: BackgroundTasks, epochs: Ann
         background_tasks.add_task(train_ctgan, real_data, discrete_columns, epochs, unique_id, file_path, len_df)
 
         # Success API
-        create_transaction(model_id=unique_id, method="POST", url="/training_model_ctgan", status_code=200)
+        write_transaction(model_id=unique_id, method="POST", url="/training_model_ctgan", status_code=200)
 
         return {"status":"200",
                 "uuid": unique_id, 
@@ -174,7 +171,7 @@ async def generate_synthetic_data(background_tasks: BackgroundTasks, epochs: Ann
             os.remove(file_path)
 
         # Error API
-        create_transaction(model_id=unique_id, method="POST", url="/training_model_ctgan", status_code=500)
+        write_transaction(model_id=unique_id, method="POST", url="/training_model_ctgan", status_code=500)
         return {"status": "500", "error_message": str(e)}
 
 
@@ -209,12 +206,12 @@ async def inference(model_id: str, sample_num: int, api_key: str):
         synthetic_data.to_csv(os.path.join(new_data, f'synthetic_{model_used}_{model_id}_data.csv'), index=False)
 
         # Success API
-        create_transaction(model_id=model_id, method="POST", url="/inference_ctgan_tvae_metrics", status_code=200)
+        write_transaction(model_id=model_id, method="POST", url="/inference_ctgan_tvae_metrics", status_code=200)
         return Response(synthetic_data.to_csv(index=False), media_type="text/csv")
     
     except Exception as e:
         # In caso di errore, registra la transazione con il codice di stato dell'errore
-        create_transaction(model_id=model_id, method="POST", url="/inference_ctgan_metrics", status_code=500)
+        write_transaction(model_id=model_id, method="POST", url="/inference_ctgan_metrics", status_code=500)
         # Solleva un'eccezione HTTP con codice di stato 500
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -255,13 +252,13 @@ async def train_model(background_tasks: BackgroundTasks, epochs:int, api_key: st
         background_tasks.add_task(train_tvae, epochs_value, data, metadata, unique_id)
 
         # Success API
-        create_transaction(model_id=unique_id, method="POST", url="/train_model_tvae_adults_dataset", status_code=200)
+        write_transaction(model_id=unique_id, method="POST", url="/train_model_tvae_adults_dataset", status_code=200)
         # Restituisci una conferma di avvio dell'addestramento
         return {"status":"200", "uuid": unique_id, "message": f"Training TVAE model started in background"}
     
     except Exception as e:
         # In caso di errore, registra la transazione con il codice di stato dell'errore
-        create_transaction(model_id=unique_id, method="POST", url="/train_model_tvae_adults_dataset", status_code=500)
+        write_transaction(model_id=unique_id, method="POST", url="/train_model_tvae_adults_dataset", status_code=500)
         # Solleva un'eccezione HTTP con codice di stato 500
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -294,12 +291,12 @@ async def inference_and_report_api(unique_id: str, num_rows: int, api_key: str):
         synthetic_data = inference_and_report(unique_id, num_rows, metadata)
         
         # Success API
-        create_transaction(model_id=unique_id, method="POST", url="/inference_tvae", status_code=200)
+        write_transaction(model_id=unique_id, method="POST", url="/inference_tvae", status_code=200)
         # Restituisci il report e i dati sintetici
         return Response(synthetic_data.to_csv(index=False), media_type="text/csv")
     
     except Exception as e:
         # In caso di errore, registra la transazione con il codice di stato dell'errore
-        create_transaction(model_id=unique_id, method="POST", url="/inference_tvae", status_code=500)
+        write_transaction(model_id=unique_id, method="POST", url="/inference_tvae", status_code=500)
         # Solleva un'eccezione HTTP con codice di stato 500
         raise HTTPException(status_code=500, detail=str(e))
